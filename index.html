@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Inspección de Vehículos</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .hidden {
+            display: none;
+        }
+        .inspection-item {
+            margin-bottom: 8px;
+        }
+        .section-title {
+            background-color: #f8f9fa;
+            padding: 10px;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">Sistema de Inspección de Vehículos</a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div id="alerts"></div>
+
+        <!-- Pantalla principal - Lista de reportes -->
+        <div id="reports-list-screen">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Reportes de Inspección</h2>
+                <button id="new-report-btn" class="btn btn-success">Nuevo Reporte</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Empresa</th>
+                            <th>Fecha</th>
+                            <th>Número de Camión</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reports-table-body">
+                        <!-- Los reportes se cargarán aquí -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pantalla de detalles del reporte -->
+        <div id="report-detail-screen" class="hidden">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Detalles del Reporte de Inspección</h2>
+                <button id="back-to-list-btn" class="btn btn-secondary">Volver a la Lista</button>
+            </div>
+            <div id="report-detail-content">
+                <!-- Los detalles del reporte se cargarán aquí -->
+            </div>
+        </div>
+
+        <!-- Formulario para crear/editar reportes -->
+        <div id="report-form-screen" class="hidden">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 id="form-title">Nuevo Reporte de Inspección</h2>
+                <button id="cancel-form-btn" class="btn btn-secondary">Cancelar</button>
+            </div>
+            <form id="report-form">
+                <input type="hidden" id="report-id">
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="carrier" class="form-label">Empresa</label>
+                        <input type="text" class="form-control" id="carrier" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="address" class="form-label">Dirección</label>
+                        <input type="text" class="form-control" id="address" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="inspection-date" class="form-label">Fecha de Inspección</label>
+                        <input type="datetime-local" class="form-control" id="inspection-date" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="truck-number" class="form-label">Número de Camión</label>
+                        <input type="text" class="form-control" id="truck-number" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="odometer" class="form-label">Lectura del Odómetro</label>
+                        <input type="number" class="form-control" id="odometer" required>
+                    </div>
+                </div>
+
+                <h4 class="section-title">Inspección del Camión</h4>
+                <div class="row" id="truck-inspection-items">
+                    <!-- Los elementos de inspección del camión se cargarán dinámicamente -->
+                </div>
+
+                <div id="trailers-container">
+                    <!-- Los remolques se añadirán aquí -->
+                </div>
+
+                <button type="button" id="add-trailer-btn" class="btn btn-info mt-3 mb-3">Agregar Remolque</button>
+
+                <div class="mb-3">
+                    <label for="remarks" class="form-label">Observaciones</label>
+                    <textarea class="form-control" id="remarks" rows="3"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Guardar Reporte</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Template para elementos de inspección del camión -->
+    <template id="truck-item-template">
+        <div class="col-md-4 inspection-item">
+            <div class="form-check">
+                <input class="form-check-input truck-item" type="checkbox" id="truck-ITEM_NAME">
+                <label class="form-check-label" for="truck-ITEM_NAME">
+                    ITEM_LABEL
+                </label>
+            </div>
+        </div>
+    </template>
+
+    <!-- Template para elementos de inspección del remolque -->
+    <template id="trailer-template">
+        <div class="trailer-section mb-4" data-index="TRAILER_INDEX">
+            <h4 class="section-title d-flex justify-content-between align-items-center">
+                Remolque #<span class="trailer-number">TRAILER_INDEX</span>
+                <button type="button" class="btn btn-sm btn-danger remove-trailer-btn">Eliminar</button>
+            </h4>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Número de Remolque</label>
+                    <input type="text" class="form-control trailer-id" required>
+                </div>
+            </div>
+            <div class="row trailer-inspection-items">
+                <!-- Los elementos de inspección del remolque se cargarán dinámicamente -->
+            </div>
+        </div>
+    </template>
+
+    <!-- Template para elementos de inspección del remolque -->
+    <template id="trailer-item-template">
+        <div class="col-md-4 inspection-item">
+            <div class="form-check">
+                <input class="form-check-input trailer-item" type="checkbox" id="trailer-TRAILER_INDEX-ITEM_NAME">
+                <label class="form-check-label" for="trailer-TRAILER_INDEX-ITEM_NAME">
+                    ITEM_LABEL
+                </label>
+            </div>
+        </div>
+    </template>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Configuración de la API
+        const API_URL = 'http://localhost:8000/api';
+
+        // Elementos del DOM
+        const reportsListScreen = document.getElementById('reports-list-screen');
+        const reportDetailScreen = document.getElementById('report-detail-screen');
+        const reportFormScreen = document.getElementById('report-form-screen');
+        const reportsTableBody = document.getElementById('reports-table-body');
+        const reportDetailContent = document.getElementById('report-detail-content');
+        const newReportBtn = document.getElementById('new-report-btn');
+        const backToListBtn = document.getElementById('back-to-list-btn');
+        const cancelFormBtn = document.getElementById('cancel-form-btn');
+        const reportForm = document.getElementById('report-form');
+        const formTitle = document.getElementById('form-title');
+        const addTrailerBtn = document.getElementById('add-trailer-btn');
+        const trailersContainer = document.getElementById('trailers-container');
+        const alertsContainer = document.getElementById('alerts');
+
+        // Elementos de inspección del camión
+        const truckItems = [
+            { name: 'air_compressor', label: 'Compresor de Aire' },
+            { name: 'air_lines', label: 'Líneas de Aire' },
+            { name: 'battery', label: 'Batería' },
+            { name: 'belts_and_hoses', label: 'Correas y Mangueras' },
+            { name: 'body', label: 'Carrocería' },
+            { name: 'brake_accessories', label: 'Accesorios de Freno' },
+            { name: 'brake_parking', label: 'Freno de Estacionamiento' },
+            { name: 'brake_service', label: 'Freno de Servicio' },
+            { name: 'clutch', label: 'Embrague' },
+            { name: 'coupling_devices', label: 'Dispositivos de Acoplamiento' },
+            { name: 'defroster_heater', label: 'Descongelador/Calentador' },
+            { name: 'drive_line', label: 'Línea de Transmisión' },
+            { name: 'engine', label: 'Motor' },
+            { name: 'exhaust', label: 'Escape' },
+            { name: 'fifth_wheel', label: 'Quinta Rueda' },
+            { name: 'fluid_levels', label: 'Niveles de Fluidos' },
+            { name: 'frame_and_assembly', label: 'Marco y Ensamblaje' },
+            { name: 'front_axle', label: 'Eje Delantero' },
+            { name: 'fuel_tanks', label: 'Tanques de Combustible' },
+            { name: 'horn', label: 'Bocina' },
+            { name: 'lights_head_stop', label: 'Luces Frontales/Freno' },
+            { name: 'lights_tail_dash', label: 'Luces Traseras/Tablero' },
+            { name: 'lights_turn_indicators', label: 'Luces Intermitentes' },
+            { name: 'lights_clearance_marker', label: 'Luces de Posición' },
+            { name: 'mirrors', label: 'Espejos' },
+            { name: 'muffler', label: 'Silenciador' },
+            { name: 'oil_pressure', label: 'Presión de Aceite' },
+            { name: 'radiator', label: 'Radiador' },
+            { name: 'rear_end', label: 'Parte Trasera' },
+            { name: 'reflectors', label: 'Reflectores' },
+            { name: 'safety_fire_extinguisher', label: 'Extintor' },
+            { name: 'safety_flags_flares_fusees', label: 'Banderines/Bengalas' },
+            { name: 'safety_reflective_triangles', label: 'Triángulos Reflectivos' },
+            { name: 'safety_spare_bulbs_and_fuses', label: 'Bombillas/Fusibles de Repuesto' },
+            { name: 'safety_spare_seal_beam', label: 'Repuesto de Faro Sellado' },
+            { name: 'starter', label: 'Arrancador' },
+            { name: 'steering', label: 'Dirección' },
+            { name: 'suspension_system', label: 'Sistema de Suspensión' },
+            { name: 'tire_chains', label: 'Cadenas para Neumáticos' },
+            { name: 'tires', label: 'Neumáticos' },
+            { name: 'transmission', label: 'Transmisión' },
+            { name: 'trip_recorder', label: 'Registrador de Viaje' },
+            { name: 'wheels_and_rims', label: 'Ruedas y Llantas' },
+            { name: 'windows', label: 'Ventanas' },
+            { name: 'windshield_wipers', label: 'Limpiaparabrisas' },
+            { name: 'other', label: 'Otros' }
+        ];
+
+        // Elementos de inspección del remolque
+        const trailerItems = [
+            { name: 'brake_connections', label: 'Conexiones de Freno' },
+            { name: 'brakes', label: 'Frenos' },
+            { name: 'coupling_devices', label: 'Dispositivos de Acoplamiento' },
+            { name: 'coupling_king_pin', label: 'Pin Rey' },
+            { name: 'doors', label: 'Puertas' },
+            { name: 'hitch', label: 'Enganche' },
+            { name: 'landing_gear', label: 'Tren de Aterrizaje' },
+            { name: 'lights_all', label: 'Todas las Luces' },
+            { name: 'reflectors_reflective_tape', label: 'Reflectores/Cinta Reflectiva' },
+            { name: 'roof', label: 'Techo' },
+            { name: 'suspension_system', label: 'Sistema de Suspensión' },
+            { name: 'tarpaulin', label: 'Lona' },
+            { name: 'tires', label: 'Neumáticos' },
+            { name: 'wheels_and_rims', label: 'Ruedas y Llantas' },
+            { name: 'other', label: 'Otros' }
+        ];
+
+        // Estado de la aplicación
+        let trailerCount = 0;
+        let currentReportId = null;
+
+        // Funciones de utilidad
+        function showAlert(message, type = 'danger') {
+            alertsContainer.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString();
+        }
+
+        function formatDateForInput(dateString) {
+            const date = new Date(dateString);
+            return date.toISOString().slice(0, 16);
+        }
+
+        // Funciones para cambiar de pantalla
+        function showReportsList() {
+            reportsListScreen.classList.remove('hidden');
+            reportDetailScreen.classList.add('hidden');
+            reportFormScreen.classList.add('hidden');
+            loadReports();
+        }
+
+        function showReportDetail(reportId) {
+            reportsListScreen.classList.add('hidden');
+            reportDetailScreen.classList.remove('hidden');
+            reportFormScreen.classList.add('hidden');
+            loadReportDetail(reportId);
+        }
+
+        function showReportForm(reportId = null) {
+            reportsListScreen.classList.add('hidden');
+            reportDetailScreen.classList.add('hidden');
+            reportFormScreen.classList.remove('hidden');
+
+            if (reportId) {
+                formTitle.textContent = 'Editar Reporte de Inspección';
+                currentReportId = reportId;
+                loadReportForEdit(reportId);
+            } else {
+                formTitle.textContent = 'Nuevo Reporte de Inspección';
+                currentReportId = null;
+                resetForm();
+            }
+        }
+
+        // Generar elementos de inspección para el camión
+        function generateTruckInspectionItems() {
+            const container = document.getElementById('truck-inspection-items');
+            container.innerHTML = '';
+
+            const template = document.getElementById('truck-item-template');
+
+            truckItems.forEach(item => {
+                const clone = template.content.cloneNode(true);
+                const input = clone.querySelector('input');
+                const label = clone.querySelector('label');
+
+                input.id = `truck-${item.name}`;
+                input.setAttribute('data-name', item.name);
+                label.setAttribute('for', `truck-${item.name}`);
+                label.textContent = item.label;
+
+                container.appendChild(clone);
+            });
+
+            // Añadir campo para descripción de 'otros'
+            if (truckItems.some(item => item.name === 'other')) {
+                const div = document.createElement('div');
+                div.className = 'col-12 mb-3 truck-other-description';
+                div.innerHTML = `
+                    <label for="truck-other-description" class="form-label">Descripción de Otros</label>
+                    <textarea class="form-control" id="truck-other-description"></textarea>
+                `;
+                container.appendChild(div);
+
+                // Mostrar/ocultar la descripción según el estado del checkbox 'otros'
+                const otherCheckbox = document.getElementById('truck-other');
+                const otherDescription = document.getElementById('truck-other-description');
+
+                div.style.display = otherCheckbox.checked ? 'block' : 'none';
+
+                otherCheckbox.addEventListener('change', function() {
+                    div.style.display = this.checked ? 'block' : 'none';
+                });
+            }
+        }
+
+        // Añadir un nuevo remolque al formulario
+        function addTrailerSection() {
+            trailerCount++;
+            const trailerIndex = trailerCount;
+
+            const template = document.getElementById('trailer-template');
+            const clone = template.content.cloneNode(true);
+
+            clone.querySelector('.trailer-section').setAttribute('data-index', trailerIndex);
+            clone.querySelector('.trailer-number').textContent = trailerIndex;
+
+            const inspectionItemsContainer = clone.querySelector('.trailer-inspection-items');
+
+            // Generar elementos de inspección para el remolque
+            const itemTemplate = document.getElementById('trailer-item-template');
+
+            trailerItems.forEach(item => {
+                const itemClone = itemTemplate.content.cloneNode(true);
+                const input = itemClone.querySelector('input');
+                const label = itemClone.querySelector('label');
+
+                input.id = `trailer-${trailerIndex}-${item.name}`;
+                input.setAttribute('data-name', item.name);
+                label.setAttribute('for', `trailer-${trailerIndex}-${item.name}`);
+                label.textContent = item.label;
+
+                inspectionItemsContainer.appendChild(itemClone);
+            });
+
+            // Añadir campo para descripción de 'otros'
+            if (trailerItems.some(item => item.name === 'other')) {
+                const div = document.createElement('div');
+                div.className = 'col-12 mb-3 trailer-other-description';
+                div.innerHTML = `
+                    <label for="trailer-${trailerIndex}-other-description" class="form-label">Descripción de Otros</label>
+                    <textarea class="form-control" id="trailer-${trailerIndex}-other-description"></textarea>
+                `;
+                inspectionItemsContainer.appendChild(div);
+
+                // Configurar visibilidad según el estado del checkbox 'otros'
+                trailersContainer.appendChild(clone);
+
+                const otherCheckbox = document.getElementById(`trailer-${trailerIndex}-other`);
+
+                div.style.display = otherCheckbox.checked ? 'block' : 'none';
+
+                otherCheckbox.addEventListener('change', function() {
+                    div.style.display = this.checked ? 'block' : 'none';
+                });
+            } else {
+                trailersContainer.appendChild(clone);
+            }
+
+            // Configurar el botón para eliminar el remolque
+            const removeButton = document.querySelector(`.trailer-section[data-index="${trailerIndex}"] .remove-trailer-btn`);
+            removeButton.addEventListener('click', function() {
+                document.querySelector(`.trailer-section[data-index="${trailerIndex}"]`).remove();
+            });
+        }
+
+        // Cargar la lista de reportes
+        async function loadReports() {
+            try {
+                const response = await fetch(`${API_URL}/reports/`);
+
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status}`);
+                }
+
+                const reports = await response.json();
+                displayReports(reports);
+            } catch (error) {
+                showAlert(`Error al cargar los reportes: ${error.message}`);
+            }
+        }
+
+        // Mostrar los reportes en la tabla
+        function displayReports(reports) {
+            reportsTableBody.innerHTML = '';
+
+            if (reports.length === 0) {
+                reportsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center">No hay reportes disponibles</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            reports.forEach(report => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${report.id || '-'}</td>
+                    <td>${report.carrier}</td>
+                    <td>${formatDate(report.inspection_date)}</td>
+                    <td>${report.truck_number}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-info view-btn" data-id="${report.id}">Ver</button>
+                            <button class="btn btn-primary edit-btn" data-id="${report.id}">Editar</button>
+                            <button class="btn btn-danger delete-btn" data-id="${report.id}">Eliminar</button>
+                        </div>
+                    </td>
+                `;
+
+                reportsTableBody.appendChild(row);
+            });
+
+            // Configurar eventos para los botones de acción
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const reportId = this.getAttribute('data-id');
+                    showReportDetail(reportId);
+                });
+            });
+
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const reportId = this.getAttribute('data-id');
+                    showReportForm(reportId);
+                });
+            });
+
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const reportId = this.getAttribute('data-id');
+                    if (confirm('¿Está seguro de que desea eliminar este reporte?')) {
+                        deleteReport(reportId);
+                    }
+                });
+            });
+        }
+
+        // Cargar los detalles de un reporte
+        async function loadReportDetail(reportId) {
+            try {
+                const response = await fetch(`${API_URL}/reports/${reportId}`);
+
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status}`);
+                }
+
+                const report = await response.json();
+                displayReportDetail(report);
+            } catch (error) {
+                showAlert(`Error al cargar los detalles del reporte: ${error.message}`);
+            }
+        }
+
+        // Mostrar los detalles de un reporte
+        function displayReportDetail(report) {
+            reportDetailContent.innerHTML = `
+                <div class="card mb-4">
+                    <div class="card-header">
+                        Información General
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Empresa:</strong> ${report.carrier}</p>
+                                <p><strong>Dirección:</strong> ${report.address}</p>
+                                <p><strong>Fecha de Inspección:</strong> ${formatDate(report.inspection_date)}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Número de Camión:</strong> ${report.truck_number}</p>
+                                <p><strong>Lectura del Odómetro:</strong> ${report.odometer_reading} km</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        Inspección del Camión
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            ${Object.entries(report.truck_inspection_items)
+                                .filter(([key]) => key !== 'other_description')
+                                .map(([key, value]) => {
+                                    const item = truckItems.find(item => item.name === key);
+                                    if (!item) return '';
+                                    return `
+                                        <div class="col-md-4 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" disabled ${value ? 'checked' : ''}>
+                                                <label class="form-check-label">${item.label}</label>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                        </div>
+                        ${report.truck_inspection_items.other && report.truck_inspection_items.other_description ? `
+                            <div class="mt-3">
+                                <strong>Descripción de Otros:</strong>
+                                <p>${report.truck_inspection_items.other_description}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                ${report.trailers.length > 0 ? `
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            Remolques
+                        </div>
+                        <div class="card-body">
+                            ${report.trailers.map((trailer, index) => `
+                                <div class="trailer-detail mb-4">
+                                    <h5>Remolque #${index + 1} - ${trailer.trailer_number}</h5>
+                                    <div class="row">
+                                        ${Object.entries(trailer.inspection_items)
+                                            .filter(([key]) => key !== 'other_description')
+                                            .map(([key, value]) => {
+                                                const item = trailerItems.find(item => item.name === key);
+                                                if (!item) return '';
+                                                return `
+                                                    <div class="col-md-4 mb-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" disabled ${value ? 'checked' : ''}>
+                                                            <label class="form-check-label">${item.label}</label>
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                    </div>
+                                    ${trailer.inspection_items.other && trailer.inspection_items.other_description ? `
+                                        <div class="mt-3">
+                                            <strong>Descripción de Otros:</strong>
+                                            <p>${trailer.inspection_items.other_description}</p>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${report.remarks ? `
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            Observaciones
+                        </div>
+                        <div class="card-body">
+                            <p>${report.remarks}</p>
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        // Cargar un reporte para edición
+        async function loadReportForEdit(reportId) {
+            try {
+                const response = await fetch(`${API_URL}/reports/${reportId}`);
+
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status}`);
+                }
+
+                const report = await response.json();
+                fillReportForm(report);
+            } catch (error) {
+                showAlert(`Error al cargar el reporte para editar: ${error.message}`);
+            }
+        }
+
+        // Llenar el formulario con los datos del reporte
+        function fillReportForm(report) {
+            resetForm();
+
+            document.getElementById('report-id').value = report.id;
+            document.getElementById('carrier').value = report.carrier;
+            document.getElementById('address').value = report.address;
+            document.getElementById('inspection-date').value = formatDateForInput(report.inspection_date);
+            document.getElementById('truck-number').value = report.truck_number;
+            document.getElementById('odometer').value = report.odometer_reading;
+            document.getElementById('remarks').value = report.remarks || '';
+
+            // Marcar los elementos de inspección del camión
+            Object.entries(report.truck_inspection_items).forEach(([key, value]) => {
+                if (key === 'other_description') {
+                    const descField = document.getElementById('truck-other-description');
+                    if (descField) {
+                        descField.value = value || '';
+                        descField.parentElement.style.display = report.truck_inspection_items.other ? 'block' : 'none';
+                    }
+                } else {
+                    const checkbox = document.getElementById(`truck-${key}`);
+                    if (checkbox) {
+                        checkbox.checked = value;
+                    }
+                }
+            });
+
+            // Añadir remolques
+            report.trailers.forEach((trailer, index) => {
+                addTrailerSection();
+
+                const trailerSection = document.querySelector(`.trailer-section[data-index="${trailerCount}"]`);
+                trailerSection.querySelector('.trailer-id').value = trailer.trailer_number;
+
+                // Marcar los elementos de inspección del remolque
+                Object.entries(trailer.inspection_items).forEach(([key, value]) => {
+                    if (key === 'other_description') {
+                        const descField = document.getElementById(`trailer-${trailerCount}-other-description`);
+                        if (descField) {
+                            descField.value = value || '';
+                            descField.parentElement.style.display = trailer.inspection_items.other ? 'block' : 'none';
+                        }
+                    } else {
+                        const checkbox = document.getElementById(`trailer-${trailerCount}-${key}`);
+                        if (checkbox) {
+                            checkbox.checked = value;
+                        }
+                    }
+                });
+            });
+        }
+
+        // Resetear el formulario
+        function resetForm() {
+            reportForm.reset();
+            document.getElementById('report-id').value = '';
+            trailersContainer.innerHTML = '';
+            trailerCount = 0;
+
+            // Regenerar elementos de inspección del camión
+            generateTruckInspectionItems();
+        }
+
+        // Recopilar datos del formulario
+        function collectFormData() {
+            const truckItems = {};
+
+            document.querySelectorAll('#truck-inspection-items .truck-item').forEach(checkbox => {
+                const name = checkbox.getAttribute('data-name');
+                truckItems[name] = checkbox.checked;
+            });
+
+            if (truckItems.other) {
+                truckItems.other_description = document.getElementById('truck-other-description').value;
+            } else {
+                truckItems.other_description = null;
+            }
+
+            const trailers = [];
+            document.querySelectorAll('.trailer-section').forEach(section => {
+                const trailerIndex = section.getAttribute('data-index');
+                const trailerNumber = section.querySelector('.trailer-id').value;
+
+                const inspectionItems = {};
+
+                section.querySelectorAll('.trailer-item').forEach(checkbox => {
+                    const name = checkbox.getAttribute('data-name');
+                    inspectionItems[name] = checkbox.checked;
+                });
+
+                if (inspectionItems.other) {
+                    inspectionItems.other_description = document.getElementById(`trailer-${trailerIndex}-other-description`).value;
+                } else {
+                    inspectionItems.other_description = null;
+                }
+
+                trailers.push({
+                    trailer_number: trailerNumber,
+                    inspection_items: inspectionItems
+                });
+            });
+
+            return {
+                carrier: document.getElementById('carrier').value,
+                address: document.getElementById('address').value,
+                inspection_date: new Date(document.getElementById('inspection-date').value).toISOString(),
+                truck_number: document.getElementById('truck-number').value,
+                odometer_reading: parseInt(document.getElementById('odometer').value, 10),
+                truck_inspection_items: truckItems,
+                trailers: trailers,
+                remarks: document.getElementById('remarks').value || null
+            };
+        }
+
+        // Guardar el reporte
+        async function saveReport(reportData) {
+            try {
+                const url = currentReportId ?
+                    `${API_URL}/reports/${currentReportId}` :
+                    `${API_URL}/reports/`;
+
+                const method = currentReportId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(reportData),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status}`);
+                }
+
+                showReportsList();
+                showAlert(`Reporte ${currentReportId ? 'actualizado' : 'creado'} con éxito`, 'success');
+            } catch (error) {
+                showAlert(`Error al guardar el reporte: ${error.message}`);
+            }
+        }
+
+        // Eliminar un reporte
+        async function deleteReport(reportId) {
+            try {
+                const response = await fetch(`${API_URL}/reports/${reportId}`, {
+                    method: 'DELETE',
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status}`);
+                }
+
+                loadReports();
+                showAlert('Reporte eliminado con éxito', 'success');
+            } catch (error) {
+                showAlert(`Error al eliminar el reporte: ${error.message}`);
+            }
+        }
+
+        // Configurar event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Generar elementos de inspección para el camión
+            generateTruckInspectionItems();
+
+            // Cargar reportes al inicio
+            loadReports();
+
+            // Event listeners para la navegación
+            newReportBtn.addEventListener('click', function() {
+                showReportForm();
+            });
+
+            backToListBtn.addEventListener('click', function() {
+                showReportsList();
+            });
+
+            cancelFormBtn.addEventListener('click', function() {
+                showReportsList();
+            });
+
+            // Event listener para agregar remolque
+            addTrailerBtn.addEventListener('click', function() {
+                addTrailerSection();
+            });
+
+            // Event listener para el formulario
+            reportForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const reportData = collectFormData();
+                saveReport(reportData);
+            });
+        });
+    </script>
+</body>
+</html>

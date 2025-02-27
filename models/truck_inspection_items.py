@@ -1,0 +1,52 @@
+from pydantic import BaseModel
+from typing import Optional
+
+
+class TruckInspectionItems(BaseModel):
+    air_compressor: bool = False
+    air_lines: bool = False
+    battery: bool = False
+    belts_and_hoses: bool = False
+    body: bool = False
+    brake_accessories: bool = False
+    brake_parking: bool = False
+    brake_service: bool = False
+    clutch: bool = False
+    coupling_devices: bool = False
+    defroster_heater: bool = False
+    drive_line: bool = False
+    engine: bool = False
+    exhaust: bool = False
+    fifth_wheel: bool = False
+    fluid_levels: bool = False
+    frame_and_assembly: bool = False
+    front_axle: bool = False
+    fuel_tanks: bool = False
+    horn: bool = False
+    lights_head_stop: bool = False
+    lights_tail_dash: bool = False
+    lights_turn_indicators: bool = False
+    lights_clearance_marker: bool = False
+    mirrors: bool = False
+    muffler: bool = False
+    oil_pressure: bool = False
+    radiator: bool = False
+    rear_end: bool = False
+    reflectors: bool = False
+    safety_fire_extinguisher: bool = False
+    safety_flags_flares_fusees: bool = False
+    safety_reflective_triangles: bool = False
+    safety_spare_bulbs_and_fuses: bool = False
+    safety_spare_seal_beam: bool = False
+    starter: bool = False
+    steering: bool = False
+    suspension_system: bool = False
+    tire_chains: bool = False
+    tires: bool = False
+    transmission: bool = False
+    trip_recorder: bool = False
+    wheels_and_rims: bool = False
+    windows: bool = False
+    windshield_wipers: bool = False
+    other: bool = False
+    other_description: Optional[str] = None
